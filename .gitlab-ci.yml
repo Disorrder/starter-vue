@@ -1,0 +1,34 @@
+image: node:latest
+
+cache:
+    paths:
+        - node_modules/
+        - .build/
+
+stages:
+    - build
+    - deploy
+
+# Development
+build:dev:
+    stage: build
+    only:
+        - dev
+    tags:
+        - dev
+    script:
+        - npm i
+        - npm run build
+
+deploy:dev:
+    stage: deploy
+    only:
+        - dev
+    tags:
+        - dev
+    script:
+        - sudo mkdir -p /var/www/viarium
+        - sudo cp -rf .build/. /var/www/viarium
+        - sudo cp -f build/dev/nginx.conf /etc/nginx/sites-enabled/viarium.conf
+        - sudo nginx -s reload
+
