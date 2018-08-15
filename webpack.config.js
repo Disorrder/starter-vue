@@ -10,6 +10,7 @@ const WebpackNotifierPlugin = require('webpack-notifier');
 const CleanWebpackPlugin  = require('clean-webpack-plugin');
 const CopyWebpackPlugin   = require('copy-webpack-plugin');
 const HtmlWebpackPlugin   = require('html-webpack-plugin');
+const OpenBrowserPlugin   = require('open-browser-webpack-plugin');
 
 function chunksSortOrder(chunks) {
     return function(a, b) {
@@ -44,16 +45,35 @@ module.exports = {
     context: path.resolve(cfg.path.src),
     watch: flags.watch,
     entry: {
-        vendor: `app/vendor.js`,
         main: `app/index.js`,
     },
     output: {
         path: path.resolve(__dirname, cfg.path.build),
-        // publicPath: '/',
+        publicPath: '/',
         filename: '[name].js',
         library: '[name]'
     },
     devtool: flags.sourcemaps ? "cheap-source-map" : false,
+    devServer: {
+        port: cfg.webserver.port,
+        host: cfg.webserver.host,
+        // hot: true,
+        inline: true,
+        disableHostCheck: true,
+        historyApiFallback: true,
+        contentBase: cfg.path.src,
+        watchOptions: {
+            aggregateTimeout: 300,
+            poll: 1000
+        },
+        stats: 'minimal',
+        proxy: {
+            "/api": {
+                target: `http://localhost:${cfg.api.port}`,
+                pathRewrite: {"^/api/" : "/"}
+            }
+        }
+    },
     resolve: {
         modules: [
             path.join(__dirname, "src"),
@@ -70,7 +90,7 @@ module.exports = {
             { test: /\.styl$/, use: ["style-loader", "css-loader", "stylus-loader"] },
             { test: /\.font\.(js|json)$/, use: ["style-loader", "css-loader", "fontgen-loader"] },
             {
-                test: /\.(jpeg|jpg|png|gif|ico|woff2?|svg|ttf|eot|fnt)$/i,
+                test: /\.(jpeg|jpg|png|gif|woff2?|svg|ttf|eot|fnt)$/i,
                 loader: "file-loader",
                 options: {
                     name: "[path][name].[ext]"
@@ -87,6 +107,7 @@ module.exports = {
     plugins: [
         flags.notify ? new WebpackNotifierPlugin({excludeWarnings: true}) : new Function(),
         flags.clean ? new CleanWebpackPlugin([cfg.path.build]) : new Function(),
+        new OpenBrowserPlugin({ url: `http://${cfg.webserver.hostname}:${cfg.webserver.port}` }),
 
         new webpack.LoaderOptionsPlugin({
             debug: true
@@ -99,20 +120,20 @@ module.exports = {
         }),
 
         new CopyWebpackPlugin([
-            { from: 'lib/*' },
             // { from: 'config.js' },
-            { from: 'favicon.*' },
+            // { from: 'favicon.*' },
+            // { from: 'robots.txt' },
         ]),
     ]
 }
 
-// var fs = require('fs');
-// { // check configs
-//     ['src/config'].map((v) => {
-//         let cfgPath = path.resolve('.', v + '.js');
-//         if (!fs.existsSync(cfgPath)) {
-//             let defPath = path.resolve('.', v + '.default.js');
-//             fs.writeFileSync(cfgPath, fs.readFileSync(defPath));
-//         }
-//     });
-// }
+var fs = require('fs');
+{ // check configs
+    ['src/config'].map((v) => {
+        let cfgPath = path.resolve('.', v + '.js');
+        if (!fs.existsSync(cfgPath)) {
+            let defPath = path.resolve('.', v + '.default.js');
+            fs.writeFileSync(cfgPath, fs.readFileSync(defPath));
+        }
+    });
+}
